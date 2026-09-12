@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/UI";
 import CertificateForm, { Certificate } from "@/components/CertificateForm";
 import RichTextEditor from "@/components/RichTextEditor";
 import BlobImage from "@/components/BlobImage";
+import { useToast } from "@/components/Toast";
 
 export default function NewKitPage() {
   return (
@@ -20,6 +21,7 @@ export default function NewKitPage() {
 function NewKitForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { showToast } = useToast();
   const initialProductType = searchParams.get("type") || "";
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -143,6 +145,7 @@ function NewKitForm() {
       });
 
       await kitsApi.createWithFiles(fd);
+      showToast("Kit created", "success");
       router.push("/kits");
     } catch (err: any) {
       setError(err.message || "Failed to create");

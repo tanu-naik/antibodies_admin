@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { PageHeader } from "@/components/UI";
 import { bulkApi, type BulkResult } from "@/lib/api";
 import { KIT_TYPE_OPTIONS } from "@/types";
+import { useToast } from "@/components/Toast";
 
 type UploadType = "antibodies" | "kits" | "news";
 
@@ -12,6 +13,9 @@ const DEFAULT_KIT_TYPE = KIT_TYPE_OPTIONS[0].value;
 interface ParsedData {
   items: any[];
   errors: string[];
+  headers: string[];
+  matchedFields: string[];
+  missingFields: string[];
 }
 
 function detectSeparator(text: string): string {
@@ -97,6 +101,85 @@ function splitMulti(v: string): string[] {
   return (v || "").split(/[;|]/).map((s) => s.trim()).filter(Boolean);
 }
 
+const SPECIES_MAP: Record<string, string> = {
+  "homo sapiens": "Human",
+  "human": "Human",
+  "mus musculus": "Mouse",
+  "mouse": "Mouse",
+  "rattus norvegicus": "Rat",
+  "rat": "Rat",
+  "ovis aries": "Sheep",
+  "sheep": "Sheep",
+  "capra aegagrus hircus": "Goat",
+  "goat": "Goat",
+  "sus scrofa": "Pig",
+  "pig": "Pig",
+  "porcine": "Pig",
+  "equus caballus": "Horse",
+  "horse": "Horse",
+  "canis lupus familiaris": "Dog",
+  "dog": "Dog",
+  "bos taurus": "Cow",
+  "cow": "Cow",
+  "bovine": "Cow",
+  "rabbit": "Rabbit",
+  "oryctolagus cuniculus": "Rabbit",
+  "chicken": "Chicken",
+  "gallus gallus": "Chicken",
+  "monkey": "Monkey",
+  "macaca mulatta": "Monkey",
+};
+
+function normalizeSpecies(v: string): string {
+  if (!v) return v;
+  const trimmed = v.trim();
+  // Try exact match first
+  const lower = trimmed.toLowerCase();
+  if (SPECIES_MAP[lower]) return SPECIES_MAP[lower];
+  // Try extracting from parentheses: "Homo sapiens (Human)" → "Human"
+  const parenMatch = trimmed.match(/\(([^)]+)\)/);
+  if (parenMatch) {
+    const inner = parenMatch[1].trim().toLowerCase();
+    if (SPECIES_MAP[inner]) return SPECIES_MAP[inner];
+  }
+  // Try matching the part before parentheses: "Homo sapiens (Human)" → "Homo sapiens"
+  const beforeParen = trimmed.split("(")[0].trim().toLowerCase();
+  if (SPECIES_MAP[beforeParen]) return SPECIES_MAP[beforeParen];
+  // Return original if no match
+  return trimmed;
+}
+
+function normalizeSpeciesMulti(v: string): string[] {
+  return splitMulti(v).map(normalizeSpecies);
+}
+
+const EXPECTED_ANTIBODY_FIELDS = [
+  "catalog no", "product name", "host", "clonality", "applications",
+  "reactivity", "dilution", "immunogen", "observed band", "gene id",
+  "uniprot", "image", "product specific info", "target info",
+];
+
+const EXPECTED_KIT_FIELDS = [
+  "catalog no", "product name", "reactivity", "species", "size",
+  "product type", "assay type", "sensitivity", "standard", "standard curve",
+  "detection range", "sample type", "measurement", "assay length",
+  "sample volume", "detection wavelength", "lead time", "research area",
+  "test principle", "target name", "alternative names", "abbreviation",
+  "uniprot id", "protocol link", "bip code", "user price",
+  "distributor price", "product file",
+];
+
+function findMatchedAndMissing(idx: Map<string, string>, expected: string[]): { matched: string[]; missing: string[] } {
+  const matched: string[] = [];
+  const missing: string[] = [];
+  for (const field of expected) {
+    const key = idx.get(field);
+    if (key) matched.push(key);
+    else missing.push(field);
+  }
+  return { matched, missing };
+}
+
 const CATALOG_ALIASES = [
   "catalog no",
   "catalog no.",
@@ -136,25 +219,38 @@ function csvToAntibodies(text: string): ParsedData {
   const errors: string[] = [];
   const items: any[] = [];
   if (headers.length === 0 || rows.length === 0) {
-    return { items, errors: ["Could not parse CSV. Check the file encoding (use UTF-8) and separator (comma, semicolon or tab)."] };
+    return { items, errors: ["Could not parse CSV. Check the file encoding (use UTF-8) and separator (comma, semicolon or tab)."], headers: [], matchedFields: [], missingFields: [] };
   }
   if (!headerHasCatalog(headers)) {
     errors.push(`Header row is missing a catalog number column. Detected headers: [${headers.join(", ")}]. Expected one of: catalogNo, Cat. No., Catalog No., SKU, etc.`);
   }
   const idx = buildHeaderIndex(headers);
+  const { matched, missing } = findMatchedAndMissing(idx, EXPECTED_ANTIBODY_FIELDS);
   const catalogKey = findCatalogKey(idx);
+  const seenCatalogs = new Set<string>();
   rows.forEach((values, i) => {
     const row: any = {};
     headers.forEach((h, j) => { row[h] = values[j] || ""; });
+    const rowNum = i + 2;
     const catalogNo = (catalogKey ? String(row[catalogKey] || "").trim() : "").trim();
-    if (!catalogNo) { errors.push(`Row ${i + 2}: Missing catalogNo`); return; }
+    if (!catalogNo) { errors.push(`Row ${rowNum}: Missing required field "Catalog No" — this row was skipped`); return; }
+    const catUpper = catalogNo.toUpperCase();
+    if (seenCatalogs.has(catUpper)) {
+      errors.push(`Row ${rowNum} (${catalogNo}): Duplicate catalog number — this row was skipped`);
+      return;
+    }
+    seenCatalogs.add(catUpper);
+    const productName = pick(row, idx, "product name", "product", "name");
+    if (!productName) errors.push(`Row ${rowNum} (${catalogNo}): Empty "Product name" — will save as empty`);
+    const host = pick(row, idx, "host");
+    if (!host) errors.push(`Row ${rowNum} (${catalogNo}): Empty "Host" — will save as empty`);
     items.push({
       catalogNo: catalogNo.toUpperCase(),
-      productName: pick(row, idx, "product name", "product", "name"),
-      host: pick(row, idx, "host"),
+      productName,
+      host,
       clonality: pick(row, idx, "clonality", "clone type") || "Polyclonal",
       applications: splitMulti(pick(row, idx, "applications", "application")),
-      reactivity: splitMulti(pick(row, idx, "reactivity", "reactive species")),
+      reactivity: normalizeSpeciesMulti(pick(row, idx, "reactivity", "reactive species")),
       dilution: pick(row, idx, "dilution", "recommended dilution") || "N/A",
       immunogen: pick(row, idx, "immunogen") || "N/A",
       observedBand: pick(row, idx, "observed band", "observed molecular weight") || "N/A",
@@ -165,7 +261,7 @@ function csvToAntibodies(text: string): ParsedData {
       uniprotId: pick(row, idx, "uniprot", "uniprot id", "uniprot no", "uniprot no."),
     });
   });
-  return { items, errors };
+  return { items, errors, headers, matchedFields: matched, missingFields: missing };
 }
 
 function csvToKits(text: string, defaultProductType: string): ParsedData {
@@ -173,69 +269,112 @@ function csvToKits(text: string, defaultProductType: string): ParsedData {
   const errors: string[] = [];
   const items: any[] = [];
   if (headers.length === 0 || rows.length === 0) {
-    return { items, errors: ["Could not parse CSV. Check the file encoding (use UTF-8) and separator (comma, semicolon or tab)."] };
+    return { items, errors: ["Could not parse CSV. Check the file encoding (use UTF-8) and separator (comma, semicolon or tab)."], headers: [], matchedFields: [], missingFields: [] };
   }
   if (!headerHasCatalog(headers)) {
     errors.push(`Header row is missing a catalog number column. Detected headers: [${headers.join(", ")}]. Expected one of: catalogNo, Cat. No., Catalog No., SKU, etc.`);
   }
   const idx = buildHeaderIndex(headers);
+  const { matched, missing } = findMatchedAndMissing(idx, EXPECTED_KIT_FIELDS);
   const catalogKey = findCatalogKey(idx);
+
+  // Group rows by catalogNo — merge sizes for same catalog
+  const kitMap = new Map<string, { item: any; sizes: Set<string>; rowNums: number[] }>();
+
   rows.forEach((values, i) => {
     const row: any = {};
     headers.forEach((h, j) => { row[h] = values[j] || ""; });
+    const rowNum = i + 2;
     const catalogNo = (catalogKey ? String(row[catalogKey] || "").trim() : "").trim();
-    if (!catalogNo) { errors.push(`Row ${i + 2}: Missing catalogNo`); return; }
-    const allowedTypes = KIT_TYPE_OPTIONS.map((o) => o.value);
-    const rawProductType = pick(row, idx, "product type", "kit type", "type");
-    let productType = rawProductType || defaultProductType;
-    if (!allowedTypes.includes(productType)) {
-      const principle = pick(row, idx, "assay principle", "assay type", "principle");
-      const lower = principle.toLowerCase();
-      if (lower.includes("competitive") || lower.includes("indirect")) {
-        productType = "C-ELISA";
-      } else if (lower.includes("sandwich") || lower.includes("quantitative")) {
-        productType = "E-ELISA";
-      } else {
-        productType = defaultProductType;
+    if (!catalogNo) { errors.push(`Row ${rowNum}: Missing required field "Catalog No" — this row was skipped`); return; }
+    const catUpper = catalogNo.toUpperCase();
+    const rawSize = pick(row, idx, "size", "kit size") || "96T";
+    const sizeSet = new Set(rawSize.split(/[;,|]/).map((s: string) => s.trim()).filter(Boolean));
+
+    if (kitMap.has(catUpper)) {
+      const existing = kitMap.get(catUpper)!;
+      sizeSet.forEach((s) => existing.sizes.add(s));
+      existing.rowNums.push(rowNum);
+      const e = existing.item;
+      if (!e.productName) e.productName = pick(row, idx, "product name", "product", "name", "kit name");
+      if (!e.reactivity) e.reactivity = normalizeSpecies(pick(row, idx, "reactivity", "target species", "species"));
+      if (!e.species) e.species = normalizeSpecies(pick(row, idx, "species", "reactivity", "target species"));
+      const at = pick(row, idx, "assay principle", "assay type", "principle");
+      if (at && (!e.assayType || e.assayType === "Sandwich")) e.assayType = at;
+      if (!e.sensitivity) e.sensitivity = pick(row, idx, "sensitivity", "sensitivity range");
+      if (!e.standard) e.standard = pick(row, idx, "standard", "standard curve");
+      if (!e.detectionRange) e.detectionRange = pick(row, idx, "detection range", "range", "assay range");
+      if (!e.sampleType) e.sampleType = pick(row, idx, "sample types", "sample type", "sample");
+      if (!e.testPrinciple) e.testPrinciple = pick(row, idx, "test principle", "principle");
+      if (!e.targetName) e.targetName = pick(row, idx, "target name", "target");
+      if (!e.uniprotId) e.uniprotId = pick(row, idx, "uniprot id", "uniprot no", "uniprot no.", "uniprot", "uniprot number");
+      if (!e.protocolLink) e.protocolLink = pick(row, idx, "protocol link", "protocol url", "protocol", "pdf", "product link", "productlink");
+      if (!e.userPrice) e.userPrice = pick(row, idx, "user price", "userprice", "price");
+      if (!e.distributorPrice) e.distributorPrice = pick(row, idx, "distributor price", "distributorprice", "dist price");
+      if (!e.productFile) e.productFile = pick(row, idx, "product file", "productfile", "product file?pdf?", "product file?PDF?");
+    } else {
+      const allowedTypes = KIT_TYPE_OPTIONS.map((o) => o.value);
+      const rawProductType = pick(row, idx, "product type", "kit type", "type");
+      let productType = rawProductType || defaultProductType;
+      if (!allowedTypes.includes(productType)) {
+        const principle = pick(row, idx, "assay principle", "assay type", "principle");
+        const lower = principle.toLowerCase();
+        if (lower.includes("competitive") || lower.includes("indirect")) productType = "C-ELISA";
+        else if (lower.includes("sandwich") || lower.includes("quantitative")) productType = "E-ELISA";
+        else productType = defaultProductType;
       }
+      if (!allowedTypes.includes(productType)) {
+        errors.push(`Row ${rowNum} (${catalogNo}): Invalid Product Type "${rawProductType || "(empty)"}" — valid types: ${allowedTypes.join(", ")}`);
+        return;
+      }
+      const productName = pick(row, idx, "product name", "product", "name", "kit name");
+      if (!productName) errors.push(`Row ${rowNum} (${catalogNo}): Empty "Product name" — will save as empty`);
+      const reactivity = normalizeSpecies(pick(row, idx, "reactivity", "target species", "species"));
+      if (!reactivity) errors.push(`Row ${rowNum} (${catalogNo}): Empty "Reactivity" — will save as empty`);
+
+      const item = {
+        catalogNo: catUpper,
+        bipCode: pick(row, idx, "bip code", "bipcode", "bip no", "bip no."),
+        productName,
+        reactivity,
+        species: normalizeSpecies(pick(row, idx, "species", "reactivity", "target species")),
+        size: rawSize,
+        productType,
+        alternativeNames: splitMulti(pick(row, idx, "alternative names", "alt names", "synonyms")),
+        assayType: pick(row, idx, "assay principle", "assay type", "principle") || "Sandwich",
+        sensitivity: pick(row, idx, "sensitivity", "sensitivity range"),
+        standard: pick(row, idx, "standard", "standard curve"),
+        standardCurve: pick(row, idx, "standard curve", "standardcurve", "standard curve image"),
+        detectionRange: pick(row, idx, "detection range", "range", "assay range"),
+        sampleType: pick(row, idx, "sample types", "sample type", "sample"),
+        measurement: pick(row, idx, "measurement", "unit"),
+        assayLength: pick(row, idx, "assay time", "assay length", "time", "duration"),
+        sampleVolume: pick(row, idx, "sample volume", "volume"),
+        detectionWavelength: pick(row, idx, "detection wavelength", "wavelength"),
+        leadTime: pick(row, idx, "lead time", "shipping time", "delivery"),
+        researchArea: splitMulti(pick(row, idx, "research area", "area", "category")),
+        testPrinciple: pick(row, idx, "test principle", "principle"),
+        targetName: pick(row, idx, "target name", "target"),
+        abbreviation: pick(row, idx, "abbreviation", "abbr", "short name"),
+        uniprotId: pick(row, idx, "uniprot id", "uniprot no", "uniprot no.", "uniprot", "uniprot number"),
+        protocolLink: pick(row, idx, "protocol link", "protocol url", "protocol", "pdf", "product link", "productlink"),
+        userPrice: pick(row, idx, "user price", "userprice", "price"),
+        distributorPrice: pick(row, idx, "distributor price", "distributorprice", "dist price"),
+        productFile: pick(row, idx, "product file", "productfile", "product file?pdf?", "product file?PDF?"),
+      };
+      kitMap.set(catUpper, { item, sizes: sizeSet, rowNums: [rowNum] });
     }
-    if (!allowedTypes.includes(productType)) {
-      errors.push(`Row ${i + 2}: Invalid Product Type "${productType}"`);
-      return;
-    }
-    const reactivity = pick(row, idx, "reactivity", "target species", "species");
-    const species = pick(row, idx, "species", "reactivity", "target species");
-    const altNames = pick(row, idx, "alternative names", "alt names", "synonyms");
-    const researchArea = pick(row, idx, "research area", "area", "category");
-    const uniprotId = pick(row, idx, "uniprot id", "uniprot no", "uniprot no.", "uniprot", "uniprot number");
-    items.push({
-      catalogNo: catalogNo.toUpperCase(),
-      bipCode: pick(row, idx, "bip code", "bipcode", "bip no", "bip no."),
-      productName: pick(row, idx, "product name", "product", "name", "kit name"),
-      reactivity,
-      species,
-      size: pick(row, idx, "size", "kit size") || "96T",
-      productType,
-      alternativeNames: splitMulti(altNames),
-      assayType: pick(row, idx, "assay principle", "assay type", "principle") || "Sandwich",
-      sensitivity: pick(row, idx, "sensitivity", "sensitivity range"),
-      standard: pick(row, idx, "standard", "standard curve"),
-      detectionRange: pick(row, idx, "detection range", "range", "assay range"),
-      sampleType: pick(row, idx, "sample types", "sample type", "sample"),
-      measurement: pick(row, idx, "measurement", "unit"),
-      assayLength: pick(row, idx, "assay time", "assay length", "time", "duration"),
-      sampleVolume: pick(row, idx, "sample volume", "volume"),
-      detectionWavelength: pick(row, idx, "detection wavelength", "wavelength"),
-      leadTime: pick(row, idx, "lead time", "shipping time", "delivery"),
-      researchArea: splitMulti(researchArea),
-      testPrinciple: pick(row, idx, "test principle", "principle"),
-      targetName: pick(row, idx, "target name", "target"),
-      abbreviation: pick(row, idx, "abbreviation", "abbr", "short name"),
-      uniprotId,
-      protocolLink: pick(row, idx, "protocol link", "protocol url", "protocol", "pdf"),
-    });
   });
-  return { items, errors };
+
+  kitMap.forEach(({ item, sizes, rowNums }) => {
+    item.size = Array.from(sizes).join(",");
+    if (rowNums.length > 1) {
+      errors.push(`Merged ${rowNums.length} rows for "${item.catalogNo}" → sizes: ${item.size}`);
+    }
+    items.push(item);
+  });
+
+  return { items, errors, headers, matchedFields: matched, missingFields: missing };
 }
 
 function csvToNews(text: string): ParsedData {
@@ -257,7 +396,7 @@ function csvToNews(text: string): ParsedData {
       imagePage: row.imagePage || "",
     });
   });
-  return { items, errors };
+  return { items, errors, headers, matchedFields: [], missingFields: [] };
 }
 
 const TEMPLATES: Record<UploadType, { label: string; headers: string; example: string }> = {
@@ -268,8 +407,8 @@ const TEMPLATES: Record<UploadType, { label: string; headers: string; example: s
   },
   kits: {
     label: "ELISA Kits",
-    headers: "bipCode,catalogNo,productName,size,productType,species,sampleTypes,detectionRange,sensitivity,assayType,measurement,assayLength,sampleVolume,detectionWavelength,leadTime,researchArea,targetName,alternativeNames,abbreviation,uniprotId,protocolLink",
-    example: '05120100004302,CSB-EL3325HU,Human SARS-CoV-2 N IgG Antibody ELISA Kit,96T,C-ELISA,"Homo sapiens (Human)","serum, plasma",,,"Indirect",,,50-100ul,450 nm,3-5 working days,Infectious Diseases,N,Nucleoprotein; Nucleocapsid protein; NC; Protein N,SARS-CoV-2 N Ab (IgG),P0DTC9,https://www.cusabio.com/uploadfile/Ins/CSB-EL3325HU.pdf',
+    headers: "bipCode,catalogNo,productName,size,productType,species,sampleTypes,detectionRange,sensitivity,assayType,measurement,assayLength,sampleVolume,detectionWavelength,leadTime,researchArea,targetName,alternativeNames,abbreviation,uniprotId,protocolLink,standardCurve,userPrice,distributorPrice,productFile",
+    example: '05120100004302,CSB-EL3325HU,Human SARS-CoV-2 N IgG Antibody ELISA Kit,96T,C-ELISA,"Homo sapiens (Human)","serum, plasma",,,"Indirect",,,50-100ul,450 nm,3-5 working days,Infectious Diseases,N,Nucleoprotein,SARS-CoV-2 N Ab (IgG),P0DTC9,https://www.example.com/protocol.pdf,,,$150,$120,https://www.example.com/file.pdf',
   },
   news: {
     label: "News",
@@ -279,6 +418,7 @@ const TEMPLATES: Record<UploadType, { label: string; headers: string; example: s
 };
 
 export default function BulkUploadPage() {
+  const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<UploadType>("antibodies");
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string>("");
@@ -295,9 +435,22 @@ export default function BulkUploadPage() {
   const lastParsedKeyRef = useRef<string>("");
   const lastResultKeyRef = useRef<string>("");
 
+  function detectCsvType(text: string): UploadType {
+    const { headers } = parseCSV(text);
+    const norm = new Set(headers.map(normalizeHeader));
+    const hasHost = norm.has("host") || norm.has("clonality") || norm.has("clone type");
+    const hasAssay = norm.has("assay type") || norm.has("assay principle") || norm.has("product type") || norm.has("kit type") || norm.has("sample type");
+    const hasTitle = norm.has("title") && norm.has("content");
+    if (hasTitle) return "news";
+    if (hasAssay && !hasHost) return "kits";
+    if (hasHost) return "antibodies";
+    return activeTab;
+  }
+
   const handleFile = useCallback((f: File) => {
     setFile(f);
     setResult(null);
+    setParsed(null);
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = e.target?.result as string;
@@ -306,16 +459,18 @@ export default function BulkUploadPage() {
         try {
           const json = JSON.parse(text);
           const items = Array.isArray(json) ? json : [json];
-          setParsed({ items, errors: [] });
+          setParsed({ items, errors: [], headers: [], matchedFields: [], missingFields: [] });
         } catch (err: any) {
-          setParsed({ items: [], errors: [`JSON parse error: ${err.message}`] });
+          setParsed({ items: [], errors: [`JSON parse error: ${err.message}`], headers: [], matchedFields: [], missingFields: [] });
         }
       } else if (f.name.endsWith(".csv")) {
-        if (activeTab === "antibodies") setParsed(csvToAntibodies(text));
-        else if (activeTab === "kits") setParsed(csvToKits(text, kitType));
+        const detectedType = detectCsvType(text);
+        if (detectedType !== activeTab) setActiveTab(detectedType);
+        if (detectedType === "antibodies") setParsed(csvToAntibodies(text));
+        else if (detectedType === "kits") setParsed(csvToKits(text, kitType));
         else setParsed(csvToNews(text));
       } else {
-        setParsed({ items: [], errors: ["Unsupported file type. Use CSV or JSON."] });
+        setParsed({ items: [], errors: ["Unsupported file type. Use CSV or JSON."], headers: [], matchedFields: [], missingFields: [] });
       }
     };
     reader.readAsText(f);
@@ -336,8 +491,12 @@ export default function BulkUploadPage() {
       else if (activeTab === "kits") res = await bulkApi.kits(parsed.items);
       else res = await bulkApi.news(parsed.items);
       setResult(res);
+      if (res.status === "ok") {
+        showToast(`${res.created} items uploaded successfully`, "success");
+      }
     } catch (err: any) {
       setResult({ status: "error", created: 0, errors: [err.message] });
+      showToast("Upload failed", "error");
     } finally {
       setUploading(false);
     }
@@ -539,17 +698,43 @@ export default function BulkUploadPage() {
                     {parsed.items.length} items ready to upload
                   </p>
                   {parsed.errors.length > 0 && (
-                    <p className="text-xs text-red-600">{parsed.errors.length} parse errors</p>
+                    <p className="text-xs text-red-600">{parsed.errors.length} issues found — review below</p>
                   )}
                 </div>
               </div>
               {parsed.errors.length > 0 && (
-                <div ref={errorsBoxRef} className="mt-3 max-h-32 overflow-y-auto rounded-lg bg-white/80 p-3">
-                  {parsed.errors.map((err, i) => (
-                    <p key={i} className="text-xs text-red-600">{err}</p>
-                  ))}
+                <div ref={errorsBoxRef} className="mt-3 max-h-60 overflow-y-auto rounded-lg bg-white/80 p-3 space-y-1">
+                  {parsed.errors.map((err, i) => {
+                    const isSkipped = err.includes("skipped");
+                    const isWarning = err.includes("will save as empty");
+                    return (
+                      <div key={i} className={`flex items-start gap-2 text-xs ${isSkipped ? "text-red-700 font-medium" : isWarning ? "text-amber-600" : "text-red-600"}`}>
+                        <span className="mt-0.5 shrink-0">{isSkipped ? "✕" : isWarning ? "⚠" : "•"}</span>
+                        <span>{err}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+              {/* Detected Headers Info */}
+              <div className="mt-3 rounded-lg bg-white/80 p-3">
+                <p className="text-xs font-semibold text-slate-600 mb-1">Detected CSV Headers ({parsed.headers.length}):</p>
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {parsed.headers.map((h, i) => (
+                    <span key={i} className="inline-block rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{h}</span>
+                  ))}
+                </div>
+                {parsed.missingFields.length > 0 && (
+                  <>
+                    <p className="text-xs font-semibold text-amber-600 mb-1">Missing Expected Fields ({parsed.missingFields.length}):</p>
+                    <div className="flex flex-wrap gap-1">
+                      {parsed.missingFields.map((f, i) => (
+                        <span key={i} className="inline-block rounded bg-amber-50 border border-amber-200 px-2 py-0.5 text-xs text-amber-700">{f}</span>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -573,14 +758,17 @@ export default function BulkUploadPage() {
                     {result.created} items created successfully
                   </p>
                   {result.errors.length > 0 && (
-                    <p className="text-xs text-brand-gold">{result.errors.length} items failed</p>
+                    <p className="text-xs text-brand-gold">{result.errors.length} items failed — see details below</p>
                   )}
                 </div>
               </div>
               {result.errors.length > 0 && (
-                <div className="mt-3 max-h-32 overflow-y-auto rounded-lg bg-white/80 p-3">
+                <div className="mt-3 max-h-60 overflow-y-auto rounded-lg bg-white/80 p-3 space-y-1">
                   {result.errors.map((err, i) => (
-                    <p key={i} className="text-xs text-red-600">{err}</p>
+                    <div key={i} className="flex items-start gap-2 text-xs text-red-600">
+                      <span className="mt-0.5 shrink-0">✕</span>
+                      <span>{err}</span>
+                    </div>
                   ))}
                 </div>
               )}
@@ -597,8 +785,8 @@ export default function BulkUploadPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-slate-100">
-                      {Object.keys(parsed.items[0]).slice(0, 5).map((key) => (
-                        <th key={key} className="px-4 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-500">
+                      {Object.keys(parsed.items[0]).map((key) => (
+                        <th key={key} className="px-3 py-2.5 text-left font-semibold uppercase tracking-wider text-slate-500 whitespace-nowrap">
                           {key}
                         </th>
                       ))}
@@ -607,9 +795,9 @@ export default function BulkUploadPage() {
                   <tbody className="divide-y divide-slate-50">
                     {parsed.items.slice(0, 10).map((item, i) => (
                       <tr key={i} className="hover:bg-slate-50/50">
-                        {Object.values(item).slice(0, 5).map((val, j) => (
-                          <td key={j} className="px-4 py-2.5 text-slate-600 max-w-[150px] truncate">
-                            {String(val)}
+                        {Object.entries(item).map(([key, val], j) => (
+                          <td key={j} className="px-3 py-2.5 text-slate-600 max-w-[200px] truncate" title={`${key}: ${String(val)}`}>
+                            {Array.isArray(val) ? val.join(", ") : String(val ?? "")}
                           </td>
                         ))}
                       </tr>
@@ -645,7 +833,7 @@ export default function BulkUploadPage() {
               <div className="flex gap-3">
                 <button
                   onClick={handleUpload}
-                  disabled={uploading || parsed.items.length === 0 || parsed.errors.length > 0}
+                  disabled={uploading || parsed.items.length === 0}
                   className="flex-1 rounded-lg bg-brand-green px-5 py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 hover:bg-brand-gold hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {uploading ? (

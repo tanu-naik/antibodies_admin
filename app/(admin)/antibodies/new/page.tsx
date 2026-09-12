@@ -7,9 +7,11 @@ import { PageHeader } from "@/components/UI";
 import CertificateForm, { Certificate } from "@/components/CertificateForm";
 import RichTextEditor from "@/components/RichTextEditor";
 import BlobImage from "@/components/BlobImage";
+import { useToast } from "@/components/Toast";
 
 export default function NewAntibodyPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState("");
@@ -108,6 +110,7 @@ export default function NewAntibodyPage() {
       });
 
       await antibodyApi.createWithFiles(fd);
+      showToast("Antibody created", "success");
       router.push("/antibodies");
     } catch (err: any) {
       setError(err.message || "Failed to create");

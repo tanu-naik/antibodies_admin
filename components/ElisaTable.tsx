@@ -8,6 +8,7 @@ import { PageHeader, ConfirmModal, SearchInput, EmptyState } from "@/components/
 import ViewModal from "@/components/ViewModal";
 import Pagination from "@/components/Pagination";
 import type { ElisaKit } from "@/types";
+import { useToast } from "@/components/Toast";
 
 interface ElisaTableProps {
   title: string;
@@ -18,6 +19,7 @@ interface ElisaTableProps {
 const PAGE_SIZE = 15;
 
 export default function ElisaTable({ title, subtitle, productType }: ElisaTableProps) {
+  const { showToast } = useToast();
   const [kits, setKits] = useState<ElisaKit[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -54,9 +56,14 @@ export default function ElisaTable({ title, subtitle, productType }: ElisaTableP
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
-    await kitsApi.delete(deleteTarget.catalogNo);
-    setDeleteTarget(null);
-    load();
+    try {
+      await kitsApi.delete(deleteTarget.catalogNo);
+      showToast(`Kit ${deleteTarget.catalogNo} deleted`, "success");
+      setDeleteTarget(null);
+      load();
+    } catch {
+      showToast("Failed to delete kit", "error");
+    }
   };
 
   const addHref = typeFilter ? `/kits/new?type=${encodeURIComponent(typeFilter)}` : "/kits/new";

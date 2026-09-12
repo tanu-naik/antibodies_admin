@@ -7,10 +7,12 @@ import { KIT_TYPE_OPTIONS } from "@/types";
 import { PageHeader } from "@/components/UI";
 import CertificateForm, { Certificate } from "@/components/CertificateForm";
 import BlobImage from "@/components/BlobImage";
+import { useToast } from "@/components/Toast";
 
 export default function EditKitPage() {
   const router = useRouter();
   const params = useParams();
+  const { showToast } = useToast();
   const catalogNo = params.catalogNo as string;
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -163,9 +165,9 @@ export default function EditKitPage() {
 
       if (imageFiles.length > 0) {
         imageFiles.forEach((f) => fd.append("image", f));
-      } else {
-        fd.append("image", existingImages.join(", "));
       }
+      // Always send existing images as JSON array so backend can merge
+      fd.append("existingImages", JSON.stringify(existingImages));
 
       const allDatasheets = [...existingDatasheets];
       datasheetFiles.forEach((f) => allDatasheets.push(`__NEW__${f.name}`));
@@ -192,6 +194,7 @@ export default function EditKitPage() {
       });
 
       await kitsApi.updateWithFiles(catalogNo, fd);
+      showToast(`Kit ${catalogNo} updated`, "success");
       router.push("/kits");
     } catch (err: any) {
       setError(err.message || "Failed to update");
@@ -260,54 +263,51 @@ export default function EditKitPage() {
           </div>
 
           <div className="mt-5 rounded-md border border-slate-300 bg-white p-3.5">
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Product Image</label>
-            {existingImages.length > 0 && imageFiles.length === 0 && (
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Product Images</label>
+            <p className="mb-2 text-xs text-slate-400">Upload multiple images. First image will be the main display image.</p>
+            {/* All images: existing + new */}
+            {(existingImages.length > 0 || imageFiles.length > 0) && (
               <div className="mb-3">
                 <div className="flex flex-wrap gap-3">
                   {existingImages.map((src, i) => (
                     <div key={`existing-${i}`} className="relative group">
-                      <img src={src} alt="" className="h-32 w-32 rounded-lg border border-slate-200 object-cover" />
+                      <img src={src} alt="" className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
                       <button
                         type="button"
                         onClick={() => setExistingImages((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                        className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
                       >×</button>
+                      {i === 0 && <span className="absolute bottom-1 left-1 rounded bg-brand-green px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>}
                     </div>
                   ))}
-                </div>
-                <p className="mt-1 text-xs text-slate-400">Current image</p>
-              </div>
-            )}
-            {imageFiles.length > 0 && (
-              <div className="mb-3">
-                <div className="flex flex-wrap gap-3">
                   {imageFiles.map((file, i) => (
                     <div key={`new-${i}`} className="relative group">
-                      <BlobImage file={file} alt={file.name} className="h-32 w-32 rounded-lg border border-slate-200 object-cover" />
+                      <BlobImage file={file} alt={file.name} className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
                       <button
                         type="button"
                         onClick={() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                        className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
                       >×</button>
-                      <p className="mt-1 text-xs text-slate-400 truncate max-w-[128px]">{file.name}</p>
+                      <span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">New</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
-              <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
+              <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
               </svg>
-              <span className="text-sm text-slate-500 mt-1">{existingImages.length > 0 || imageFiles.length > 0 ? "Replace image" : "Click to upload image"}</span>
+              <span className="text-sm text-slate-500 mt-1">Click to add more images</span>
               <input
                 type="file"
                 accept="image/*"
+                multiple
                 className="hidden"
                 onChange={(e) => {
                   const files = e.target.files;
                   if (files && files.length > 0) {
-                    setImageFiles([files[0]]);
+                    setImageFiles((prev) => [...prev, ...Array.from(files)]);
                   }
                   e.target.value = "";
                 }}

@@ -48,6 +48,7 @@ export interface ElisaKit {
   assayType: string;
   sensitivity: string;
   standard: string;
+  standardCurve: string;
   detectionRange: string;
   sampleType: string;
   measurement: string;
@@ -63,6 +64,10 @@ export interface ElisaKit {
   abbreviation: string;
   protocolLink: string;
   uniprotId: string;
+  userPrice: string;
+  distributorPrice: string;
+  productFile: string;
+  priceMap: Record<string, string> | null;
   certificates?: Certificate[];
 }
 
