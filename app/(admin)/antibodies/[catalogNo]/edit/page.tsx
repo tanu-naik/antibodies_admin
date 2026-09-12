@@ -196,54 +196,55 @@ export default function EditAntibodyPage() {
           <Input label="Observed Band" name="observedBand" value={form.observedBand} onChange={handleChange} />
         </div>
         <div className="mt-5 rounded-md border border-slate-300 bg-white p-3.5">
-            <label className="mb-1.5 block text-sm font-medium text-slate-700">Product Images</label>
-            <div className="rounded-md border border-slate-300 bg-white px-3.5 py-2.5">
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Product Image</label>
+            {form.image && imageFiles.length === 0 && (
+              <div className="mb-3">
+                <div className="relative inline-block">
+                  <img src={form.image} alt="Current" className="h-32 w-32 rounded-lg border border-slate-200 object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, image: "" })}
+                    className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                  >×</button>
+                </div>
+                <p className="mt-1 text-xs text-slate-400">Current image</p>
+              </div>
+            )}
+            {imageFiles.length > 0 && (
+              <div className="mb-3">
+                <div className="flex flex-wrap gap-3">
+                  {imageFiles.map((file, i) => (
+                    <div key={`${file.name}-${i}`} className="relative group">
+                      <BlobImage file={file} alt={file.name} className="h-32 w-32 rounded-lg border border-slate-200 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                      >×</button>
+                      <p className="mt-1 text-xs text-slate-400 truncate max-w-[128px]">{file.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
+              <svg className="h-6 w-6 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+              </svg>
+              <span className="text-sm text-slate-500 mt-1">{form.image || imageFiles.length > 0 ? "Replace image" : "Click to upload image"}</span>
               <input
                 type="file"
-                multiple
                 accept="image/*"
+                className="hidden"
                 onChange={(e) => {
                   const files = e.target.files;
-                  if (files) {
-                    setImageFiles((prev) => [...prev, ...Array.from(files)]);
+                  if (files && files.length > 0) {
+                    setImageFiles([files[0]]);
                   }
                   e.target.value = "";
                 }}
-                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-brand-green/10 file:text-brand-green hover:file:bg-brand-green/20 file:cursor-pointer cursor-pointer"
               />
-            </div>
-          {form.image && imageFiles.length === 0 && (
-            <div className="mt-2 flex flex-wrap gap-3">
-              {form.image.split(",").filter(Boolean).map((src, i) => (
-                <div key={i} className="relative group">
-                  <div className="h-20 w-20 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
-                    <img src={src.trim()} alt={`Image ${i + 1}`} className="h-full w-full object-cover" />
-                  </div>
-                </div>
-              ))}
-              <span className="text-sm text-slate-500">{form.image.split(",").filter(Boolean).length} image(s)</span>
-            </div>
-          )}
-          {imageFiles.length > 0 && (
-            <div className={`mt-2 flex flex-wrap gap-3 ${imageFiles.length > 5 ? "max-h-56 overflow-y-auto pr-1" : ""}`}>
-              {imageFiles.map((file, i) => (
-                <div key={`${file.name}-${i}`} className="relative group">
-                  <div className="h-20 w-20 rounded-md border border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden">
-                    <BlobImage file={file} alt={file.name} className="h-full w-full object-cover" />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            </label>
         </div>
         <div className="mt-5">
           <Textarea label="Immunogen" name="immunogen" value={form.immunogen} onChange={handleChange} />
