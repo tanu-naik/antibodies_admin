@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { kitsApi, uploadApi, speciesApi, type Species } from "@/lib/api";
 import { KIT_TYPE_OPTIONS } from "@/types";
@@ -26,9 +26,25 @@ export default function EditKitPage() {
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [showCertForm, setShowCertForm] = useState(false);
   const [speciesList, setSpeciesList] = useState<Species[]>([]);
+  const [imagesModified, setImagesModified] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
 
   useEffect(() => { speciesApi.getByType("ELISA").then(setSpeciesList).catch(() => {}); }, []);
+
+  const preserveScroll = (fn: () => void) => {
+    const scrollPos = scrollRef.current ? { top: scrollRef.current.scrollTop, left: scrollRef.current.scrollLeft } : null;
+    fn();
+    if (scrollPos && scrollRef.current) {
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current!.scrollTop = scrollPos.top;
+          scrollRef.current!.scrollLeft = scrollPos.left;
+        }
+      });
+    }
+  };
 
   const [form, setForm] = useState({
     bipCode: "",
@@ -163,11 +179,20 @@ export default function EditKitPage() {
       fd.append("protocolLink", form.protocolLink);
       fd.append("uniprotId", form.uniprotId);
 
-      if (imageFiles.length > 0) {
+      // Only send existingImages when user explicitly modified images
+      // When not sent, backend preserves the existing database image
+      if (imagesModified) {
+        if (existingImages.length === 0 && imageFiles.length === 0) {
+          fd.append("existingImages", "__CLEAR__");
+        } else {
+          imageFiles.forEach((f) => fd.append("image", f));
+          fd.append("existingImages", JSON.stringify(existingImages));
+        }
+      } else if (imageFiles.length > 0) {
+        // User added new files without touching existing images list — merge both
         imageFiles.forEach((f) => fd.append("image", f));
+        fd.append("existingImages", JSON.stringify(existingImages));
       }
-      // Always send existing images as JSON array so backend can merge
-      fd.append("existingImages", JSON.stringify(existingImages));
 
       const allDatasheets = [...existingDatasheets];
       datasheetFiles.forEach((f) => allDatasheets.push(`__NEW__${f.name}`));
@@ -222,7 +247,7 @@ export default function EditKitPage() {
         <div className="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
       )}
 
-      <div className="flex-1 min-h-0 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-card p-6">
+      <div ref={scrollRef} className="flex-1 min-h-0 overflow-auto rounded-2xl border border-slate-200 bg-white shadow-card p-6">
         <form onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
             <Input label="BIP Code" name="bipCode" value={form.bipCode} onChange={handleChange} />
@@ -274,7 +299,7 @@ export default function EditKitPage() {
                       <img src={src} alt="" className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
                       <button
                         type="button"
-                        onClick={() => setExistingImages((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => preserveScroll(() => { setExistingImages((prev) => prev.filter((_, idx) => idx !== i)); setImagesModified(true); })}
                         className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
                       >×</button>
                       {i === 0 && <span className="absolute bottom-1 left-1 rounded bg-brand-green px-1.5 py-0.5 text-[10px] font-bold text-white">Main</span>}
@@ -285,7 +310,7 @@ export default function EditKitPage() {
                       <BlobImage file={file} alt={file.name} className="h-24 w-24 rounded-lg border border-slate-200 object-cover" />
                       <button
                         type="button"
-                        onClick={() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                        onClick={() => preserveScroll(() => setImageFiles((prev) => prev.filter((_, idx) => idx !== i)))}
                         className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
                       >×</button>
                       <span className="absolute bottom-1 left-1 rounded bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold text-white">New</span>
@@ -294,25 +319,50 @@ export default function EditKitPage() {
                 </div>
               </div>
             )}
-            <label className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors">
+            {/* Clear all images button - shows when there are existing images to clear */}
+            {existingImages.length > 0 && (
+              <button
+                type="button"
+                onClick={() => preserveScroll(() => {
+                  setExistingImages([]);
+                  setImageFiles([]);
+                  setImagesModified(true);
+                })}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-md text-xs font-semibold text-red-600 hover:text-red-700 transition-colors"
+              >
+                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear all images
+              </button>
+            )}
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  preserveScroll(() => {
+                    setImageFiles((prev) => [...prev, ...Array.from(files)]);
+                    setImagesModified(true);
+                  });
+                }
+                e.target.value = "";
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              className="flex flex-col items-center justify-center w-full h-20 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-brand-green hover:bg-brand-green/5 transition-colors"
+            >
               <svg className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
               </svg>
               <span className="text-sm text-slate-500 mt-1">Click to add more images</span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                onChange={(e) => {
-                  const files = e.target.files;
-                  if (files && files.length > 0) {
-                    setImageFiles((prev) => [...prev, ...Array.from(files)]);
-                  }
-                  e.target.value = "";
-                }}
-              />
-            </label>
+            </button>
           </div>
 
           {/* Datasheets */}

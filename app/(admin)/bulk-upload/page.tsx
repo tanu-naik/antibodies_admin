@@ -166,7 +166,7 @@ const EXPECTED_KIT_FIELDS = [
   "sample volume", "detection wavelength", "lead time", "research area",
   "test principle", "target name", "alternative names", "abbreviation",
   "uniprot id", "protocol link", "bip code", "user price",
-  "distributor price", "product file",
+  "distributor price", "product file", "image", "image url",
 ];
 
 function findMatchedAndMissing(idx: Map<string, string>, expected: string[]): { matched: string[]; missing: string[] } {
@@ -361,6 +361,7 @@ function csvToKits(text: string, defaultProductType: string): ParsedData {
         userPrice: pick(row, idx, "user price", "userprice", "price"),
         distributorPrice: pick(row, idx, "distributor price", "distributorprice", "dist price"),
         productFile: pick(row, idx, "product file", "productfile", "product file?pdf?", "product file?PDF?"),
+        image: pick(row, idx, "image", "image url"),
       };
       kitMap.set(catUpper, { item, sizes: sizeSet, rowNums: [rowNum] });
     }
@@ -407,8 +408,8 @@ const TEMPLATES: Record<UploadType, { label: string; headers: string; example: s
   },
   kits: {
     label: "ELISA Kits",
-    headers: "bipCode,catalogNo,productName,size,productType,species,sampleTypes,detectionRange,sensitivity,assayType,measurement,assayLength,sampleVolume,detectionWavelength,leadTime,researchArea,targetName,alternativeNames,abbreviation,uniprotId,protocolLink,standardCurve,userPrice,distributorPrice,productFile",
-    example: '05120100004302,CSB-EL3325HU,Human SARS-CoV-2 N IgG Antibody ELISA Kit,96T,C-ELISA,"Homo sapiens (Human)","serum, plasma",,,"Indirect",,,50-100ul,450 nm,3-5 working days,Infectious Diseases,N,Nucleoprotein,SARS-CoV-2 N Ab (IgG),P0DTC9,https://www.example.com/protocol.pdf,,,$150,$120,https://www.example.com/file.pdf',
+    headers: "bipCode,catalogNo,productName,size,productType,species,sampleTypes,detectionRange,sensitivity,assayType,measurement,assayLength,sampleVolume,detectionWavelength,leadTime,researchArea,targetName,alternativeNames,abbreviation,uniprotId,protocolLink,standardCurve,userPrice,distributorPrice,productFile,image",
+    example: '05120100004302,CSB-EL3325HU,Human SARS-CoV-2 N IgG Antibody ELISA Kit,96T,C-ELISA,"Homo sapiens (Human)","serum, plasma",,,"Indirect",,,50-100ul,450 nm,3-5 working days,Infectious Diseases,N,Nucleoprotein,SARS-CoV-2 N Ab (IgG),P0DTC9,https://www.example.com/protocol.pdf,,,$150,$120,https://www.example.com/file.pdf,https://www.example.com/image.png',
   },
   news: {
     label: "News",

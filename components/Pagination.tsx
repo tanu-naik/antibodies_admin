@@ -21,12 +21,12 @@ export default function Pagination({ currentPage, totalPages, onPageChange }: Pa
   const visiblePages = getVisiblePages();
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200">
+    <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 border-t border-slate-200 gap-3">
       <p className="text-sm text-slate-500">
         Page <span className="font-medium text-brand-navy">{currentPage}</span> of{" "}
         <span className="font-medium text-brand-navy">{totalPages}</span>
       </p>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 overflow-x-auto">
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}

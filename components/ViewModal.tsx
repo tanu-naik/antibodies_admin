@@ -106,8 +106,8 @@ function SectionTitle({ title }: { title: string }) {
 function FieldRow({ label, value }: { label: string; value: string | undefined | null }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-4 py-2">
-      <span className="w-44 shrink-0 text-sm text-slate-500">{label}</span>
+    <div className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 py-2">
+      <span className="w-full sm:w-44 shrink-0 text-sm text-slate-500">{label}</span>
       <span className="text-sm font-medium text-brand-navy break-words">{value}</span>
     </div>
   );

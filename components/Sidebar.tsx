@@ -36,6 +36,11 @@ const NAV: NavItem[] = [
     icon: "M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23.693L5 14.5m14.8.8l1.402 1.402c1.232 1.232.65 3.318-1.067 3.611A48.309 48.309 0 0112 21c-2.773 0-5.491-.235-8.135-.687-1.718-.293-2.3-2.379-1.067-3.61L5 14.5",
   },
   {
+    href: "/quote-requests",
+    label: "Quote Requests",
+    icon: "M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H5a2 2 0 00-2 2v1h2",
+  },
+  {
     href: "/news",
     label: "News",
     icon: "M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z",
@@ -47,7 +52,12 @@ const NAV: NavItem[] = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+export default function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   const [openMenu, setOpenMenu] = useState<string | null>(() => {
@@ -76,8 +86,8 @@ export default function Sidebar() {
     return item.children?.some((c) => isActive(c.href)) ?? false;
   };
 
-  return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col bg-brand-navy">
+  const navContent = (
+    <>
       {/* Logo area */}
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
         <Image src="/logo.png" alt="Omnigen" width={36} height={36} className="object-contain" />
@@ -100,6 +110,7 @@ export default function Sidebar() {
               <Link
                 key={item.label}
                 href={item.href!}
+                onClick={onClose}
                 className={`group mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
                   active
                     ? "bg-white/10 text-white shadow-sm"
@@ -166,6 +177,7 @@ export default function Sidebar() {
                       <Link
                         key={child.href}
                         href={child.href}
+                        onClick={onClose}
                         className={`flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200 ${
                           childActive
                             ? "bg-brand-green/15 text-brand-green font-medium"
@@ -187,6 +199,29 @@ export default function Sidebar() {
       <div className="border-t border-white/10 px-6 py-4">
         <p className="text-[11px] text-slate-500">Omnigen Catalog v1.0</p>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex fixed inset-y-0 left-0 z-40 w-64 flex-col bg-brand-navy">
+        {navContent}
+      </aside>
+
+      {/* Mobile overlay */}
+      {open && (
+        <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={onClose} />
+      )}
+
+      {/* Mobile sidebar */}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col bg-brand-navy transition-transform duration-300 md:hidden ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {navContent}
+      </aside>
+    </>
   );
 }

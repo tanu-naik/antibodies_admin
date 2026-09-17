@@ -36,14 +36,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const stored = localStorage.getItem("admin_token");
     if (stored) {
       setToken(stored);
-      fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${stored}` } })
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10000);
+      fetch(`${API_BASE}/auth/me`, {
+        headers: { Authorization: `Bearer ${stored}` },
+        signal: controller.signal,
+      })
         .then((r) => (r.ok ? r.json() : Promise.reject()))
         .then(setUser)
         .catch(() => {
           localStorage.removeItem("admin_token");
           setToken(null);
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          clearTimeout(timeout);
+          setLoading(false);
+        });
     } else {
       setLoading(false);
     }
@@ -51,15 +59,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     let res: Response;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       res = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
+        signal: controller.signal,
       });
-    } catch {
+    } catch (e: any) {
+      clearTimeout(timeout);
+      if (e.name === "AbortError") throw new Error("Request timed out. Make sure the backend is running on port 8001.");
       throw new Error("Cannot connect to server. Make sure the backend is running on port 8001.");
     }
+    clearTimeout(timeout);
 
     const data = await res.json();
     if (!res.ok) throw new Error(data.message || "Login failed");

@@ -55,16 +55,16 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, action, secondaryAction }: PageHeaderProps) {
   return (
-    <div className="mb-8 flex items-end justify-between">
+    <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-brand-navy sm:text-3xl">
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-brand-navy lg:text-3xl">
           {title}
         </h1>
         {subtitle && (
           <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
         )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
         {secondaryAction && (
           <a
             href={secondaryAction.href}

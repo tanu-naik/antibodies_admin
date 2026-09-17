@@ -79,12 +79,12 @@ export default function ElisaTable({ title, subtitle, productType }: ElisaTableP
         />
       </div>
 
-      <div className="flex-shrink-0 mb-4 flex items-center gap-3">
+      <div className="flex-shrink-0 mb-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <SearchInput value={search} onChange={setSearch} placeholder="Search by catalog number or product name..." />
         <select
           value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value)}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 transition-colors duration-200 focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30 min-w-[180px]"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-700 transition-colors duration-200 focus:border-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green/30 sm:min-w-[180px]"
         >
           <option value="">All Types</option>
           {KIT_TYPE_OPTIONS.map((o) => (
@@ -111,16 +111,12 @@ export default function ElisaTable({ title, subtitle, productType }: ElisaTableP
               <thead className="sticky top-0 z-10">
                 <tr className="bg-brand-navy">
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80 w-[50px]"></th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">BIP Code</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Cat.No</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Product Name</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Size</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Type</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Species</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Sample</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Sensitivity</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Assay</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Range</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Size</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Type</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Species</th>
+                  <th className="hidden xl:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Assay</th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-white/80">Actions</th>
                 </tr>
               </thead>
@@ -130,7 +126,7 @@ export default function ElisaTable({ title, subtitle, productType }: ElisaTableP
                     <td className="px-4 py-3.5">
                       <div className="h-9 w-9 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center">
                         {kit.image ? (
-                          <img src={kit.image} alt={kit.productName} className="h-full w-full object-cover" />
+                          <img src={kit.image.split(",")[0].trim()} alt={kit.productName} className="h-full w-full object-cover" />
                         ) : (
                           <svg className="h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5a1.5 1.5 0 001.5-1.5V5.25a1.5 1.5 0 00-1.5-1.5H3.75a1.5 1.5 0 00-1.5 1.5v14.25a1.5 1.5 0 001.5 1.5z" />
@@ -139,25 +135,19 @@ export default function ElisaTable({ title, subtitle, productType }: ElisaTableP
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <span className="font-mono text-xs text-slate-500">{kit.bipCode}</span>
-                    </td>
-                    <td className="px-4 py-3.5">
                       <span className="font-mono text-xs font-bold text-brand-green">{kit.catalogNo}</span>
                     </td>
                     <td className="px-4 py-3.5">
                       <p className="font-medium text-brand-navy text-sm line-clamp-2 group-hover:text-brand-green transition-colors duration-150">{kit.productName}</p>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{kit.size}</td>
-                    <td className="px-4 py-3.5">
+                    <td className="hidden md:table-cell px-4 py-3.5 text-sm text-slate-600">{kit.size}</td>
+                    <td className="hidden lg:table-cell px-4 py-3.5">
                       <span className="inline-block rounded-full border border-brand-green/30 bg-brand-green/10 px-2.5 py-1 text-[11px] font-medium text-brand-green">{kit.productType}</span>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="hidden lg:table-cell px-4 py-3.5">
                       <span className="inline-block rounded-full border border-brand-navy/15 bg-brand-navy/5 px-2.5 py-1 text-[11px] font-medium text-brand-navy">{kit.species}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{kit.sampleType}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{kit.sensitivity}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{kit.assayType}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{kit.detectionRange}</td>
+                    <td className="hidden xl:table-cell px-4 py-3.5 text-sm text-slate-600">{kit.assayType}</td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button

@@ -78,11 +78,10 @@ export default function AntibodiesPage() {
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80 w-[50px]"></th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Cat.No</th>
                   <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Product Name</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Host</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Clonality</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Applications</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Reactivity</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Dilution</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Host</th>
+                  <th className="hidden md:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Clonality</th>
+                  <th className="hidden lg:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Applications</th>
+                  <th className="hidden xl:table-cell px-4 py-3 text-left text-[11px] font-bold uppercase tracking-wider text-white/80">Reactivity</th>
                   <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-white/80">Actions</th>
                 </tr>
               </thead>
@@ -106,25 +105,24 @@ export default function AntibodiesPage() {
                     <td className="px-4 py-3.5">
                       <p className="font-medium text-brand-navy text-sm line-clamp-2 group-hover:text-brand-green transition-colors duration-150">{ab.productName}</p>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="hidden md:table-cell px-4 py-3.5">
                       <span className="inline-block rounded-full border border-brand-navy/15 bg-brand-navy/5 px-2.5 py-1 text-[11px] font-medium text-brand-navy">{ab.host}</span>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{ab.clonality}</td>
-                    <td className="px-4 py-3.5">
+                    <td className="hidden md:table-cell px-4 py-3.5 text-sm text-slate-600">{ab.clonality}</td>
+                    <td className="hidden lg:table-cell px-4 py-3.5">
                       <div className="flex flex-wrap gap-1">
                         {ab.applications.map((app) => (
                           <span key={app} className="inline-block rounded-full border border-brand-green/30 bg-brand-green/10 px-2.5 py-1 text-[11px] font-medium text-brand-green">{app}</span>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
+                    <td className="hidden xl:table-cell px-4 py-3.5">
                       <div className="flex flex-wrap gap-1">
                         {ab.reactivity.map((react) => (
                           <span key={react} className="inline-block rounded-full border border-brand-navy/15 bg-brand-navy/5 px-2.5 py-1 text-[11px] font-medium text-brand-navy">{react}</span>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{ab.dilution}</td>
                     <td className="px-4 py-3.5 text-right">
                       <div className="flex items-center justify-end gap-1">
                         <button

@@ -135,15 +135,6 @@ function NewKitForm() {
         if (cert.file) fd.append("certificateFiles", cert.file);
       });
 
-      console.log("[Kit Create] FormData entries:");
-      fd.forEach((value, key) => {
-        if (value instanceof File) {
-          console.log(`  ${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
-        } else {
-          console.log(`  ${key}: ${String(value).substring(0, 100)}`);
-        }
-      });
-
       await kitsApi.createWithFiles(fd);
       showToast("Kit created", "success");
       router.push("/kits");
