@@ -404,3 +404,36 @@ export const quoteRequestApi = {
   delete: (id: string) =>
     apiFetch<void>(`/quote-requests/${id}`, { method: "DELETE" }),
 };
+
+// ─── Trusted Researchers ────────────────────
+export interface TrustedResearcher {
+  id: string;
+  name: string;
+  role: string;
+  quote: string;
+  initials: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const trustedResearcherApi = {
+  getAll: () => apiFetch<TrustedResearcher[]>("/trusted-researchers"),
+  create: (data: { name: string; role?: string; quote: string; initials?: string; sortOrder?: number }) =>
+    apiFetch<TrustedResearcher>("/trusted-researchers", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: Partial<TrustedResearcher>) =>
+    apiFetch<TrustedResearcher>(`/trusted-researchers/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiFetch<void>(`/trusted-researchers/${id}`, { method: "DELETE" }),
+  reorder: (ids: string[]) =>
+    apiFetch<void>("/trusted-researchers/reorder", {
+      method: "PUT",
+      body: JSON.stringify({ ids }),
+    }),
+};
