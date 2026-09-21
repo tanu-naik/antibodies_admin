@@ -23,6 +23,7 @@ export interface QuoteRequestList {
   totalPages: number;
 }
 
+
 const API_BASE = process.env.NEXT_URL_API || "http://localhost:8001/api";
 
 function getToken(): string | null {
