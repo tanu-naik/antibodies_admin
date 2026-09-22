@@ -388,12 +388,16 @@ export const quoteRequestApi = {
       method: "POST",
       body: JSON.stringify(data),
     }),
-  getAll: (params: { page?: number; limit?: number; status?: string; search?: string } = {}) => {
+  getAll: (params: { page?: number; limit?: number; status?: string; search?: string; catalogNo?: string; email?: string; from?: string; to?: string } = {}) => {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set("page", params.page.toString());
     if (params.limit) searchParams.set("limit", params.limit.toString());
     if (params.status && params.status !== "all") searchParams.set("status", params.status);
     if (params.search) searchParams.set("search", params.search);
+    if (params.catalogNo) searchParams.set("catalogNo", params.catalogNo);
+    if (params.email) searchParams.set("email", params.email);
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
     return apiFetch<QuoteRequestList>(`/quote-requests?${searchParams.toString()}`);
   },
   getById: (id: string) => apiFetch<QuoteRequest>(`/quote-requests/${id}`),
@@ -404,6 +408,84 @@ export const quoteRequestApi = {
     }),
   delete: (id: string) =>
     apiFetch<void>(`/quote-requests/${id}`, { method: "DELETE" }),
+};
+
+// ─── Support Requests ─────────────────────────
+export interface SupportRequest {
+  id: string;
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SupportRequestList {
+  items: SupportRequest[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const supportRequestApi = {
+  getAll: (params: { page?: number; limit?: number; status?: string; search?: string; from?: string; to?: string } = {}) => {
+    const searchParams = new URLSearchParams();
+    if (params.page) searchParams.set("page", params.page.toString());
+    if (params.limit) searchParams.set("limit", params.limit.toString());
+    if (params.status && params.status !== "all") searchParams.set("status", params.status);
+    if (params.search) searchParams.set("search", params.search);
+    if (params.from) searchParams.set("from", params.from);
+    if (params.to) searchParams.set("to", params.to);
+    return apiFetch<SupportRequestList>(`/support-requests?${searchParams.toString()}`);
+  },
+  update: (id: string, status: string) =>
+    apiFetch<SupportRequest>(`/support-requests/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status }),
+    }),
+  delete: (id: string) =>
+    apiFetch<void>(`/support-requests/${id}`, { method: "DELETE" }),
+};
+
+// ─── Users ────────────────────────────────────
+export interface AdminUser {
+  id: string;
+  username: string;
+  name: string;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreCustomer {
+  id: string;
+  email: string;
+  name: string;
+  phone?: string | null;
+  company?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const usersApi = {
+  getAll: () => apiFetch<AdminUser[]>("/users"),
+  getCustomers: () => apiFetch<StoreCustomer[]>("/users/customers"),
+  getById: (id: string) => apiFetch<AdminUser>(`/users/${id}`),
+  create: (data: { username: string; password: string; name: string; role?: string }) =>
+    apiFetch<AdminUser>("/users", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  update: (id: string, data: { username?: string; name?: string; role?: string; password?: string }) =>
+    apiFetch<AdminUser>(`/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    }),
+  delete: (id: string) =>
+    apiFetch<void>(`/users/${id}`, { method: "DELETE" }),
 };
 
 // ─── Trusted Researchers ────────────────────

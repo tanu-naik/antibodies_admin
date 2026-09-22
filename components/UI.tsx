@@ -9,9 +9,11 @@ interface ConfirmModalProps {
   message: string;
   onConfirm: () => Promise<void>;
   onCancel: () => void;
+  confirmLabel?: string;
+  confirmClassName?: string;
 }
 
-export function ConfirmModal({ open, title, message, onConfirm, onCancel }: ConfirmModalProps) {
+export function ConfirmModal({ open, title, message, onConfirm, onCancel, confirmLabel, confirmClassName }: ConfirmModalProps) {
   const [loading, setLoading] = useState(false);
   if (!open) return null;
 
@@ -35,9 +37,12 @@ export function ConfirmModal({ open, title, message, onConfirm, onCancel }: Conf
           <button
             onClick={handleConfirm}
             disabled={loading}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-red-700 disabled:opacity-50"
+            className={
+              confirmClassName ||
+              "rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-red-700 disabled:opacity-50"
+            }
           >
-            {loading ? "Deleting..." : "Delete"}
+            {loading ? "Confirming..." : confirmLabel || "Delete"}
           </button>
         </div>
       </div>
