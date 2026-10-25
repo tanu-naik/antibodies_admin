@@ -10,8 +10,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Omnigen Admin",
-  description: "Admin dashboard for Omnigen Catalog",
+  title: "Antibody Admin",
+  description: "Admin dashboard for Antibody Catalog",
 };
 
 export default function RootLayout({

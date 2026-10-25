@@ -38,10 +38,16 @@ export default function LoginPage() {
         </div>
         <div className="relative z-10 max-w-md px-8 text-center">
           <div className="mx-auto flex h-24 w-48 items-center justify-center">
-            <Image src="/logo.png" alt="Omnigen" width={192} height={80} className="object-contain" priority />
+            <Image
+              src="/logo.png"
+              alt="Antibody"
+              width={192}
+              height={80}
+              className="object-contain"
+            />
           </div>
           <h1 className="mt-8 text-4xl font-semibold tracking-tight text-white">
-            Omnigen Admin
+            Antibody Admin
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-slate-300">
             Manage your catalog of validated research antibodies and quantitative ELISA kits from one place.
@@ -61,9 +67,15 @@ export default function LoginPage() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="mb-10 flex items-center gap-3 lg:hidden">
-            <Image src="/logo.png" alt="Omnigen" width={48} height={20} className="object-contain" />
+            <Image
+              src="/logo.png"
+              alt="Antibody"
+              width={48}
+              height={20}
+              className="object-contain"
+            />
             <div>
-              <h1 className="text-lg font-semibold text-brand-navy">Omnigen</h1>
+              <h1 className="text-lg font-semibold text-brand-navy">Antibody</h1>
               <p className="text-[10px] font-medium uppercase tracking-widest text-brand-gold">Admin Panel</p>
             </div>
           </div>
@@ -114,7 +126,7 @@ export default function LoginPage() {
           </form>
 
           <p className="mt-8 text-center text-xs text-slate-400">
-            Omnigen Inc. &copy; {new Date().getFullYear()} All rights reserved.
+            Antibody Inc. &copy; {new Date().getFullYear()} All rights reserved.
           </p>
         </div>
       </div>

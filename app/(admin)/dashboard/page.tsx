@@ -45,7 +45,7 @@ export default function DashboardPage() {
         </div>
         <div className="relative px-8 py-16 sm:px-12 sm:py-20">
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-gold">
-            Omnigen Inc.
+            Antibody Inc.
           </p>
           <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-white sm:text-5xl">
             Admin Dashboard
@@ -170,7 +170,7 @@ export default function DashboardPage() {
             </h3>
             <p className="mt-2 flex-1 text-sm leading-relaxed text-slate-500">
               Product launches, company announcements and research highlights
-              from the Omnigen team.
+              from the Antibody team.
             </p>
             <div className="mt-5 flex items-center justify-between">
               <span className="text-sm font-semibold text-brand-green">
@@ -223,14 +223,14 @@ export default function DashboardPage() {
       <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-gold">
-              About Omnigen
+<p className="text-sm font-semibold uppercase tracking-[0.25em] text-brand-gold">
+              About Antibody
             </p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-brand-navy sm:text-4xl">
               Rigorously validated reagents you can build your research on
             </h2>
             <p className="mt-5 text-base leading-relaxed text-slate-500">
-              Omnigen Inc. develops and supplies validated research antibodies
+              Antibody Inc. develops and supplies validated research antibodies
               and quantitative ELISA kits for the global life science community.
               Every reagent is produced to exacting standards — so the data you
               publish today will still be reproducible tomorrow.

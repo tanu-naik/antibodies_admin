@@ -110,9 +110,13 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     <>
       {/* Logo area */}
       <div className="flex h-16 items-center gap-3 border-b border-white/10 px-6">
-        <Image src="/logo.png" alt="Omnigen" width={36} height={36} className="object-contain" />
+        <div className="h-9 w-9 rounded-md bg-brand-green flex items-center justify-center flex-shrink-0">
+          <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </div>
         <div>
-          <h1 className="text-base font-semibold tracking-tight text-white">Omnigen</h1>
+          <h1 className="text-base font-semibold tracking-tight text-white">Antibody</h1>
           <p className="text-[11px] font-medium uppercase tracking-widest text-brand-gold">Admin Panel</p>
         </div>
       </div>
@@ -217,7 +221,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* Bottom */}
       <div className="border-t border-white/10 px-6 py-4">
-        <p className="text-[11px] text-slate-500">Omnigen Catalog v1.0</p>
+        <p className="text-[11px] text-slate-500">Antibody Catalog v1.0</p>
       </div>
     </>
   );
